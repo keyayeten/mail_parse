@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message Fetcher</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <progress id="progressBar" value="0" max="100"></progress>
+    <table id="messageTable">
+        <tr>
+            <th>Тема</th>
+            <th>Отправитель</th>
+            <th>Дата</th>
+            <th>Описание</th>
+        </tr>
+    </table>
+    <script>
+        $(document).ready(function() {
+            const socket = new WebSocket('ws://' + window.location.host + '/ws/messages/');
+
+            socket.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                const progressBar = $('#progressBar');
+                const table = $('#messageTable');
+
+                progressBar.val(data.checkedPercentage);
+
+                if (data.messageFound) {
+                    let countdown = 10;
+                    let countdownInterval = setInterval(() => {
+                        progressBar.val(100 - (countdown * 10));
+                        countdown--;
+
+                        if (countdown < 0) {
+                            clearInterval(countdownInterval);
+                            data.messages.forEach(message => {
+                                const row = $('<tr></tr>');
+                                row.append($('<td></td>').text(message.subject));
+                                row.append($('<td></td>').text(message.sender));
+                                row.append($('<td></td>').text(message.date));
+                                row.append($('<td></td>').text(message.shortDescription));
+                                table.append(row);
+                            });
+                        }
+                    }, 1000);
+                }
+            };
+
+            socket.onclose = function(event) {
+                console.error('WebSocket closed unexpectedly');
+            };
+        });
+    </script>
+</body>
+</html>
