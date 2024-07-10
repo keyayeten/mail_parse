@@ -7,6 +7,19 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
+    <form id="registrationForm">
+        <h2>Register</h2>
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required><br><br>
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required><br><br>
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required><br><br>
+        <label for="emailPassword">Email Password:</label>
+        <input type="password" id="emailPassword" name="emailPassword"><br><br>
+        <button type="submit">Register</button>
+    </form>
+
     <progress id="progressBar" value="0" max="100"></progress>
     <table id="messageTable">
         <tr>
@@ -16,42 +29,74 @@
             <th>Описание</th>
         </tr>
     </table>
+
     <script>
         $(document).ready(function() {
+            $('#registrationForm').submit(function(event) {
+                event.preventDefault();
+
+                const formData = {
+                    username: $('#username').val(),
+                    password: $('#password').val(),
+                    email: $('#email').val(),
+                    email_password: $('#emailPassword').val(),
+                };
+
+                $.ajax({
+                    url: '/api/register/',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        alert('Registration successful!');
+                        $('#registrationForm')[0].reset();
+                    },
+                    error: function(xhr, status, error) {
+                        alert('Registration failed: ' + xhr.responseText);
+                    }
+                });
+            });
+
             const socket = new WebSocket('ws://' + window.location.host + '/ws/messages/');
 
-            socket.onmessage = function(event) {
-                const data = JSON.parse(event.data);
-                const progressBar = $('#progressBar');
-                const table = $('#messageTable');
+        socket.onopen = function() {
+            const username = prompt("Enter your email username:");
+            const password = prompt("Enter your email password:");
+            socket.send(JSON.stringify({username: username, password: password}));
+        };
 
-                progressBar.val(data.checkedPercentage);
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            const progressBar = $('#progressBar');
+            const table = $('#messageTable');
 
-                if (data.messageFound) {
-                    let countdown = 10;
-                    let countdownInterval = setInterval(() => {
-                        progressBar.val(100 - (countdown * 10));
-                        countdown--;
+            progressBar.val(data.checkedPercentage);
 
-                        if (countdown < 0) {
-                            clearInterval(countdownInterval);
-                            data.messages.forEach(message => {
-                                const row = $('<tr></tr>');
-                                row.append($('<td></td>').text(message.subject));
-                                row.append($('<td></td>').text(message.sender));
-                                row.append($('<td></td>').text(message.date));
-                                row.append($('<td></td>').text(message.shortDescription));
-                                table.append(row);
-                            });
-                        }
-                    }, 1000);
-                }
-            };
+            if (data.messageFound) {
+                let countdown = 10;
+                let countdownInterval = setInterval(() => {
+                    progressBar.val(100 - (countdown * 10));
+                    countdown--;
 
-            socket.onclose = function(event) {
-                console.error('WebSocket closed unexpectedly');
-            };
-        });
+                    if (countdown < 0) {
+                        clearInterval(countdownInterval);
+                        data.messages.forEach(message => {
+                            const row = $('<tr></tr>');
+                            row.append($('<td></td>').text(message.subject));
+                            row.append($('<td></td>').text(message.sender));
+                            row.append($('<td></td>').text(message.date));
+                            row.append($('<td></td>').text(message.shortDescription));
+                            table.append(row);
+                        });
+                    }
+                }, 1000);
+            }
+        };
+
+        socket.onclose = function(event) {
+            console.error('WebSocket closed unexpectedly');
+        };
+    });
     </script>
 </body>
 </html>
