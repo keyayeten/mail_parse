@@ -1,33 +1,38 @@
 import json
 import asyncio
 from channels.generic.websocket import AsyncWebsocketConsumer
+from .mail_receiving import mail_receiving
 
 
 class MessageConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         await self.accept()
 
-        # Имитировать процесс проверки писем
-        total_emails = 100
-        for i in range(total_emails):
-            await asyncio.sleep(0.1)
+        total_emails = 10
+        index = 0
+        async for message in mail_receiving():
+            index += 1
+            await asyncio.sleep(1)
+
             progress_data = {
-                'checkedPercentage': (i + 1) / total_emails * 100,
+                'checkedPercentage': (index / total_emails) * 100,
                 'messageFound': False
             }
             await self.send(text_data=json.dumps(progress_data))
 
-        # Если сообщение найдено, отправить его
-        messages = [{
-            'subject': 'Пример темы',
-            'sender': 'example@example.com',
-            'date': '2024-07-09',
-            'shortDescription': 'Краткое описание сообщения'
-        }]
+            await asyncio.sleep(1)
+
+            await self.send(text_data=json.dumps({
+                'checkedPercentage': 100,
+                'messageFound': True,
+                'messages': [message]
+            }))
+
+        # Добавьте завершающее сообщение, если нужно
         await self.send(text_data=json.dumps({
             'checkedPercentage': 100,
-            'messageFound': True,
-            'messages': messages
+            'messageFound': False,
+            'messages': []
         }))
 
     async def disconnect(self, close_code):

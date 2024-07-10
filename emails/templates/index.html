@@ -5,10 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Message Fetcher</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        #messageTable {
+            display: none; /* Скрываем таблицу с письмами изначально */
+        }
+    </style>
 </head>
 <body>
-    <form id="registrationForm">
-        <h2>Register</h2>
+    <div id="userInputs">
+        <h2>Enter User Information</h2>
         <label for="username">Username:</label>
         <input type="text" id="username" name="username" required><br><br>
         <label for="password">Password:</label>
@@ -17,24 +22,27 @@
         <input type="email" id="email" name="email" required><br><br>
         <label for="emailPassword">Email Password:</label>
         <input type="password" id="emailPassword" name="emailPassword"><br><br>
-        <button type="submit">Register</button>
-    </form>
+        <button id="submitButton" type="button">Submit</button>
+    </div>
 
     <progress id="progressBar" value="0" max="100"></progress>
     <table id="messageTable">
-        <tr>
-            <th>Тема</th>
-            <th>Отправитель</th>
-            <th>Дата</th>
-            <th>Описание</th>
-        </tr>
+        <thead>
+            <tr>
+                <th>Тема</th>
+                <th>Отправитель</th>
+                <th>Дата</th>
+                <th>Описание</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Сюда будут добавляться строки с письмами -->
+        </tbody>
     </table>
 
     <script>
         $(document).ready(function() {
-            $('#registrationForm').submit(function(event) {
-                event.preventDefault();
-
+            $('#submitButton').click(function() {
                 const formData = {
                     username: $('#username').val(),
                     password: $('#password').val(),
@@ -49,7 +57,9 @@
                     data: JSON.stringify(formData),
                     success: function(response) {
                         alert('Registration successful!');
-                        $('#registrationForm')[0].reset();
+                        $('#userInputs').hide(); // Скрываем поля ввода после успешной регистрации
+                        $('#messageTable').show(); // Показываем таблицу с письмами
+                        displayMessages(response.messages); // Вызываем функцию для отображения писем
                     },
                     error: function(xhr, status, error) {
                         alert('Registration failed: ' + xhr.responseText);
@@ -59,44 +69,42 @@
 
             const socket = new WebSocket('ws://' + window.location.host + '/ws/messages/');
 
-        socket.onopen = function() {
-            const username = prompt("Enter your email username:");
-            const password = prompt("Enter your email password:");
-            socket.send(JSON.stringify({username: username, password: password}));
-        };
+            // Отправка параметров пользователя при открытии WebSocket соединения
+            socket.onopen = function() {
+                const email = $('#email').val(); // Получаем значение имени пользователя из поля ввода
+                const email_password = $('#email_password').val(); // Получаем значение пароля из поля ввода
+                socket.send(JSON.stringify({email: email, email_password: email_password}));
+            };
 
-        socket.onmessage = function(event) {
-            const data = JSON.parse(event.data);
-            const progressBar = $('#progressBar');
-            const table = $('#messageTable');
+            socket.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                const progressBar = $('#progressBar');
+                progressBar.val(data.checkedPercentage);
 
-            progressBar.val(data.checkedPercentage);
+                if (data.messageFound) {
+                    $('#messageTable').show(); // Показываем таблицу с письмами
+                    displayMessages(data.messages); // Вызываем функцию для отображения писем
+                }
+            };
 
-            if (data.messageFound) {
-                let countdown = 10;
-                let countdownInterval = setInterval(() => {
-                    progressBar.val(100 - (countdown * 10));
-                    countdown--;
+            socket.onclose = function(event) {
+                console.error('WebSocket closed unexpectedly');
+            };
 
-                    if (countdown < 0) {
-                        clearInterval(countdownInterval);
-                        data.messages.forEach(message => {
-                            const row = $('<tr></tr>');
-                            row.append($('<td></td>').text(message.subject));
-                            row.append($('<td></td>').text(message.sender));
-                            row.append($('<td></td>').text(message.date));
-                            row.append($('<td></td>').text(message.shortDescription));
-                            table.append(row);
-                        });
-                    }
-                }, 1000);
+            // Функция для отображения писем по одному
+            function displayMessages(messages) {
+                messages.forEach((message, index) => {
+                    setTimeout(() => {
+                        const row = $('<tr></tr>');
+                        row.append($('<td></td>').text(message.subject));
+                        row.append($('<td></td>').text(message.sender));
+                        row.append($('<td></td>').text(message.date));
+                        row.append($('<td></td>').text(message.shortDescription));
+                        $('#messageTable tbody').append(row);
+                    }, index * 1000); // Показывать каждое письмо с интервалом 1 секунда
+                });
             }
-        };
-
-        socket.onclose = function(event) {
-            console.error('WebSocket closed unexpectedly');
-        };
-    });
+        });
     </script>
 </body>
 </html>
