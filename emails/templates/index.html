@@ -59,37 +59,38 @@
                         alert('Registration successful!');
                         $('#userInputs').hide(); // Скрываем поля ввода после успешной регистрации
                         $('#messageTable').show(); // Показываем таблицу с письмами
-                        displayMessages(response.messages); // Вызываем функцию для отображения писем
+
+                        // Открываем WebSocket после успешной регистрации
+                        const socket = new WebSocket('ws://' + window.location.host + '/ws/messages/');
+                        
+                        // Отправка параметров пользователя при открытии WebSocket соединения
+                        socket.onopen = function() {
+                            socket.send(JSON.stringify({
+                                email: formData.email, 
+                                email_password: formData.email_password
+                            }));
+                        };
+
+                        socket.onmessage = function(event) {
+                            const data = JSON.parse(event.data);
+                            const progressBar = $('#progressBar');
+                            progressBar.val(data.checkedPercentage);
+
+                            if (data.messageFound) {
+                                $('#messageTable').show(); // Показываем таблицу с письмами
+                                displayMessages(data.messages); // Вызываем функцию для отображения писем
+                            }
+                        };
+
+                        socket.onclose = function(event) {
+                            console.error('WebSocket closed unexpectedly');
+                        };
                     },
                     error: function(xhr, status, error) {
                         alert('Registration failed: ' + xhr.responseText);
                     }
                 });
             });
-
-            const socket = new WebSocket('ws://' + window.location.host + '/ws/messages/');
-
-            // Отправка параметров пользователя при открытии WebSocket соединения
-            socket.onopen = function() {
-                const email = $('#email').val(); // Получаем значение имени пользователя из поля ввода
-                const email_password = $('#email_password').val(); // Получаем значение пароля из поля ввода
-                socket.send(JSON.stringify({email: email, email_password: email_password}));
-            };
-
-            socket.onmessage = function(event) {
-                const data = JSON.parse(event.data);
-                const progressBar = $('#progressBar');
-                progressBar.val(data.checkedPercentage);
-
-                if (data.messageFound) {
-                    $('#messageTable').show(); // Показываем таблицу с письмами
-                    displayMessages(data.messages); // Вызываем функцию для отображения писем
-                }
-            };
-
-            socket.onclose = function(event) {
-                console.error('WebSocket closed unexpectedly');
-            };
 
             // Функция для отображения писем по одному
             function displayMessages(messages) {

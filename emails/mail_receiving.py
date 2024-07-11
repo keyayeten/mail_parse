@@ -1,33 +1,37 @@
-import aioimaplib
+import imaplib
 import email
 from email.header import decode_header
 
 
-async def mail_receiving(username, password):
-    mail = aioimaplib.IMAP4_SSL("imap.gmail.com")
-    await mail.wait_hello_from_server()
+def mail_receiving(username, password):
+    mail = imaplib.IMAP4_SSL("imap.gmail.com")
+    mail.login(username, password)
 
-    await mail.login(username, password)
+    mail.select("inbox")
 
-    await mail.select("inbox")
-
-    status, messages = await mail.search(None, "ALL")
+    status, messages = mail.search(None, "ALL")
     messages = messages[0].split()
 
     for mail_id in messages:
-        res, msg = await mail.fetch(mail_id, "(RFC822)")
+        res, msg = mail.fetch(mail_id, "(RFC822)")
         for response_part in msg:
             if isinstance(response_part, tuple):
                 email_message = email.message_from_bytes(response_part[1])
                 subject, encoding = decode_header(email_message["Subject"])[0]
                 if isinstance(subject, bytes):
                     subject = subject.decode(encoding)
-
                 yield {
-                    "Subject": subject,
-                    "From": email_message.get("From"),
-                    "To": email_message.get("To"),
-                    "Date": email_message.get("Date")
+                    "subject:": subject,
+                    "sender:": email_message.get("From"),
+                    "shortDescription:": email_message.get("To"),
+                    "date:": email_message.get("Date")
                 }
+    mail.close()
+    mail.logout()
 
-    await mail.logout()
+# {
+#     "subject": "Subject 3",
+#     "sender": "sender3@example.com",
+#     "date": "2023-07-12",
+#     "shortDescription": "Description 3"
+# }
