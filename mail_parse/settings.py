@@ -10,7 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
+import base64
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,9 +22,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-q=e5#sjm8tdmep%yv572$%tf0+hgwy@w_hb-d9q9^yq2qejwh-'
-FIELD_ENCRYPTION_KEY = "pwFjaYmC8K7FdUOFeCRMtOo0z18-c2kkBQ1Y-FCLUhc="
-
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-secret')
+FIELD_ENCRYPTION_KEY = os.getenv(
+    'FIELD_ENCRYPTION_KEY',
+    'pwFjaYmC8K7FdUOFeCRMtOo0z18-c2kkBQ1Y-FCLUhc='
+)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
@@ -79,11 +83,14 @@ ASGI_APPLICATION = 'mail_parse.asgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
-
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('POSTGRES_DB', 'yourdbname'),
+        'USER': os.getenv('POSTGRES_USER', 'yourdbuser'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'yourdbpassword'),
+        'HOST': 'db',
+        'PORT': '5432',
     }
 }
 
